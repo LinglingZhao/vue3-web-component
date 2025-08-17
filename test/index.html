@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vue3 Web Component Test</title>
+  <!-- 引入Vue库 -->
+  <!-- <script src="https://unpkg.com/vue@3.5.18/dist/vue.global.js"></script> -->
+  <script>console.log('Vue loaded:', window.Vue)</script>
+  <!-- 直接引用dist目录中的组件文件 -->
+  <script type="module" src="./HelloWorld.vue3.wc.js"></script>
+  <script>console.log('Component should be registered now');
+  // 检查自定义元素是否已注册
+  setTimeout(() => {
+    if ('hello-world' in customElements) {
+      console.log('Custom element "hello-world" is registered');
+      const element = document.querySelector('hello-world');
+      console.log('Element found:', element);
+    } else {
+      console.log('Custom element "hello-world" is NOT registered');
+    }
+  }, 1000);</script>
+</head>
+<body>
+  <!-- <h1>Vue3 Web Component Test</h1> -->
+  <!-- 使用自定义元素 -->
+  <hello-world msg="Hello from Vue31122211 Web Component"></hello-world>
+</body>
+</html>
