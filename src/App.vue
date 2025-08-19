@@ -1,6 +1,7 @@
 <script setup>
 // 导入自定义元素
 import './components/HelloWorld/index.js'
+import MultiTreeDemo from './components/MultiTree/Demo.vue'
 </script>
 
 <template>
@@ -14,6 +15,9 @@ import './components/HelloWorld/index.js'
   </div>
   <!-- 使用自定义元素标签 -->
   <hello-world msg="Vite + Vue"></hello-world>
+  
+  <!-- 多棵树并列展示 -->
+  <MultiTreeDemo />
 </template>
 
 <style scoped>
