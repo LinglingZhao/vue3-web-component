@@ -98,3 +98,5 @@ node build-component.js HelloWorld
 1. 组件名称必须使用连字符格式（kebab-case）
 2. 确保组件的props和events在Vue2项目中正确映射
 3. 对于复杂组件，可能需要额外的配置和测试
+
+Github Token: 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
