@@ -14,48 +14,55 @@ let interGraphEdges = [];
 const treeDataList = [
   {
     id: 'root1',
-    inorderIndex: 0,
     children: [
       {
         id: 'child1-1',
-        inorderIndex: 1,
-        children: [{ id: 'grandchild1-1', inorderIndex: 3 }, { id: 'grandchild1-2', inorderIndex: 4 }]
+        children: [{ id: 'grandchild1-1' }, { id: 'grandchild1-2' }]
       },
       {
         id: 'child1-2',
-        inorderIndex: 2,
-        children: [{ id: 'grandchild1-3', inorderIndex: 5 }, { id: 'grandchild1-4', inorderIndex: 6 }]
+        children: [{ id: 'grandchild1-3' }, { id: 'grandchild1-4' }]
       }
     ]
   },
   {
     id: 'root2',
-    inorderIndex: 0,
     children: [
       {
         id: 'child2-1',
-        inorderIndex: 1,
-        children: [{ id: 'grandchild2-1', inorderIndex: 3 }]
+        children: [{ id: 'grandchild2-1' }]
       },
       {
         id: 'child2-2',
-        inorderIndex: 2,
-        children: [{ id: 'grandchild2-2', inorderIndex: 4 }, { id: 'grandchild2-3', inorderIndex: 5 }, { id: 'grandchild2-4', inorderIndex: 6 }]
+        children: [{ id: 'grandchild2-2' }, { id: 'grandchild2-3' }, { id: 'grandchild2-4' }]
       }
     ]
   },
   {
     id: 'root3',
-    inorderIndex: 0,
     children: [
       {
         id: 'child3-1',
-        inorderIndex: 1,
-        children: [{ id: 'grandchild3-1', inorderIndex: 3 }, { id: 'grandchild3-2', inorderIndex: 4 }, { id: 'grandchild3-3', inorderIndex: 5 }]
+        children: [{ id: 'grandchild3-1' }, { id: 'grandchild3-2' }, { id: 'grandchild3-3' }]
       }
     ]
   }
 ];
+
+// 为树节点动态添加inorderIndex属性的函数
+const addInorderIndex = (treeData) => {
+  let index = 0;
+  
+  const traverse = (node) => {
+    node.inorderIndex = index++;
+    if (node.children && node.children.length > 0) {
+      node.children.forEach(child => traverse(child));
+    }
+  };
+  
+  traverse(treeData);
+  return treeData;
+};
 
 // 定义树之间的连接关系
 const interTreeConnections = [
@@ -64,7 +71,19 @@ const interTreeConnections = [
 ];
 
 // 树之间的横向间距
-const treeSpacing = 100;
+const TREE_SPACING = 100;
+// 容器宽度
+const CONTAINER_WIDTH = 1200;
+// 容器高度
+const CONTAINER_HEIGHT = 600;
+// 节点x坐标水平间距
+const NODE_X_SPACING = 100;
+// 节点x坐标偏移量
+const NODE_X_OFFSET = 30;
+// 节点y坐标垂直间距
+const NODE_Y_SPACING = 50;
+// 节点y坐标偏移量
+const NODE_Y_OFFSET = 100;
 
 const initGraph = () => {
   if (!containerRef.value) return;
@@ -73,11 +92,8 @@ const initGraph = () => {
   graphs = [];
   interGraphEdges = [];
   
-  const containerWidth = 1200;
-  const containerHeight = 600;
-  
   // 计算每棵树的宽度
-  let treeWidth = (containerWidth - (treeDataList.length - 1) * treeSpacing) / treeDataList.length;
+  let treeWidth = (CONTAINER_WIDTH - (treeDataList.length - 1) * TREE_SPACING) / treeDataList.length;
   
   // 合并所有树的数据到一个图实例中
   let allNodes = [];
@@ -85,9 +101,12 @@ const initGraph = () => {
   
   // 手动构建节点和边数据，避免treeToGraphData重置位置
   treeDataList.forEach((treeData, index) => {
+    // 为每棵树的数据添加inorderIndex属性
+    const treeWithIndex = addInorderIndex(JSON.parse(JSON.stringify(treeData)));
+    
     // 为每棵树设置不同的x坐标，避免重叠
     // 使用treeWidth和索引计算xOffset，确保树之间有足够间距
-    const xOffset = index * (treeWidth + treeSpacing);
+    const xOffset = index * (treeWidth + TREE_SPACING);
     
     // 递归函数来处理节点数据
     const processNode = (node, parentId = null, depth = 0) => {
@@ -96,9 +115,9 @@ const initGraph = () => {
         id: node.id,
         inorderIndex: node.inorderIndex, // 添加中序遍历序号属性
         style: {
-          x: xOffset + depth * 100 + 30,  // 根据深度设置x坐标，增加间距
-          y: node.inorderIndex * 50 + 100  // 根据深度设置y坐标，增加间距
-        }
+        x: xOffset + depth * NODE_X_SPACING + NODE_X_OFFSET,  // 根据深度设置x坐标，增加间距
+        y: node.inorderIndex * NODE_Y_SPACING + NODE_Y_OFFSET  // 根据深度设置y坐标，增加间距
+      }
       };
       
       // 添加节点到数组
@@ -123,14 +142,14 @@ const initGraph = () => {
     };
     
     // 处理当前树的根节点
-    processNode(treeData);
+    processNode(treeWithIndex);
   });
   
   // 创建一个图实例来显示所有树
   const graph = new Graph({
     container: containerRef.value,
-    width: containerWidth,
-    height: containerHeight,
+    width: CONTAINER_WIDTH,
+    height: CONTAINER_HEIGHT,
     data: {
       nodes: allNodes,
       edges: allEdges
@@ -149,13 +168,13 @@ const initGraph = () => {
       }
     },
     edge: {
-      type: 'cubic-horizontal'
-    },
-    layout: {
-      type: 'preset',
-      direction: 'LR',
-      indent: 100,
-      radial: false
+        type: 'polyline',
+        style: {
+          radius: 0,
+          router: {
+            type: 'orth',
+          },
+        },
     },
     behaviors: ['drag-canvas', 'zoom-canvas', 'drag-element', 'collapse-expand']
   });
