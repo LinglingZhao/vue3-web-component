@@ -7,107 +7,238 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { Graph, treeToGraphData } from '@antv/g6';
 
 const containerRef = ref(null);
-let graph = null;
+let graphs = [];
+let interGraphEdges = [];
 
 // 定义多棵树的数据
 const treeDataList = [
   {
     id: 'root1',
+    inorderIndex: 0,
     children: [
       {
         id: 'child1-1',
-        children: [{ id: 'grandchild1-1' }, { id: 'grandchild1-2' }]
+        inorderIndex: 1,
+        children: [{ id: 'grandchild1-1', inorderIndex: 3 }, { id: 'grandchild1-2', inorderIndex: 4 }]
       },
       {
         id: 'child1-2',
-        children: [{ id: 'grandchild1-3' }, { id: 'grandchild1-4' }]
+        inorderIndex: 2,
+        children: [{ id: 'grandchild1-3', inorderIndex: 5 }, { id: 'grandchild1-4', inorderIndex: 6 }]
       }
     ]
   },
   {
     id: 'root2',
+    inorderIndex: 0,
     children: [
       {
         id: 'child2-1',
-        children: [{ id: 'grandchild2-1' }]
+        inorderIndex: 1,
+        children: [{ id: 'grandchild2-1', inorderIndex: 3 }]
       },
       {
         id: 'child2-2',
-        children: [{ id: 'grandchild2-2' }, { id: 'grandchild2-3' }, { id: 'grandchild2-4' }]
+        inorderIndex: 2,
+        children: [{ id: 'grandchild2-2', inorderIndex: 4 }, { id: 'grandchild2-3', inorderIndex: 5 }, { id: 'grandchild2-4', inorderIndex: 6 }]
       }
     ]
   },
   {
     id: 'root3',
+    inorderIndex: 0,
     children: [
       {
         id: 'child3-1',
-        children: [{ id: 'grandchild3-1' }, { id: 'grandchild3-2' }, { id: 'grandchild3-3' }]
+        inorderIndex: 1,
+        children: [{ id: 'grandchild3-1', inorderIndex: 3 }, { id: 'grandchild3-2', inorderIndex: 4 }, { id: 'grandchild3-3', inorderIndex: 5 }]
       }
     ]
   }
 ];
 
+// 定义树之间的连接关系
+const interTreeConnections = [
+  { source: 'grandchild1-2', target: 'child2-1' },
+  { source: 'grandchild2-3', target: 'child3-1' }
+];
+
+// 树之间的横向间距
+const treeSpacing = 100;
+
 const initGraph = () => {
   if (!containerRef.value) return;
 
-  // 为每棵树创建独立的图实例
-  const graphs = [];
+  // 清空之前的图实例
+  graphs = [];
+  interGraphEdges = [];
+  
   const containerWidth = 1200;
   const containerHeight = 600;
-  const treeWidth = containerWidth / treeDataList.length;
   
+  // 计算每棵树的宽度
+  let treeWidth = (containerWidth - (treeDataList.length - 1) * treeSpacing) / treeDataList.length;
+  
+  // 合并所有树的数据到一个图实例中
+  let allNodes = [];
+  let allEdges = [];
+  
+  // 手动构建节点和边数据，避免treeToGraphData重置位置
   treeDataList.forEach((treeData, index) => {
-    const graphData = treeToGraphData(treeData);
+    // 为每棵树设置不同的x坐标，避免重叠
+    // 使用treeWidth和索引计算xOffset，确保树之间有足够间距
+    const xOffset = index * (treeWidth + treeSpacing);
     
-    // 为每棵树设置不同的x偏移量，实现并列显示
-    const xOffset = index * treeWidth;
-    
-    // 为节点添加偏移量
-    const offsetNodes = graphData.nodes.map(node => ({
-      ...node,
-      style: {
-        ...node.style,
-        x: (node.style?.x || 0) + xOffset,
-        y: node.style?.y || 0
-      }
-    }));
-    
-    // 创建每棵树的图实例
-    const treeGraph = new Graph({
-      container: containerRef.value,
-      width: containerWidth,
-      height: containerHeight,
-      data: {
-        nodes: offsetNodes,
-        edges: graphData.edges
-      },
-      node: {
+    // 递归函数来处理节点数据
+    const processNode = (node, parentId = null, depth = 0) => {
+      // 创建节点数据
+      const nodeData = {
+        id: node.id,
+        inorderIndex: node.inorderIndex, // 添加中序遍历序号属性
         style: {
-          labelText: (d) => d.id,
-          labelPlacement: 'center',
-          labelBackground: true,
-          ports: [{ placement: 'right' }, { placement: 'left' }]
+          x: xOffset + depth * 100 + 30,  // 根据深度设置x坐标，增加间距
+          y: node.inorderIndex * 50 + 100  // 根据深度设置y坐标，增加间距
         }
-      },
-      edge: {
-        type: 'cubic-horizontal'
-      },
-      layout: {
-        type: 'dendrogram',
-        direction: 'LR',
-        nodeSep: 50,
-        rankSep: 100
-      },
-      behaviors: ['drag-canvas', 'zoom-canvas', 'drag-element']
-    });
+      };
+      
+      // 添加节点到数组
+      allNodes.push(nodeData);
+      
+      // 如果有父节点，创建边
+      if (parentId) {
+        const edgeData = {
+          id: `edge-${parentId}-${node.id}`,
+          source: parentId,
+          target: node.id
+        };
+        allEdges.push(edgeData);
+      }
+      
+      // 递归处理子节点
+      if (node.children && node.children.length > 0) {
+        node.children.forEach(child => {
+          processNode(child, node.id, depth + 1);
+        });
+      }
+    };
     
-    treeGraph.render();
-    graphs.push(treeGraph);
+    // 处理当前树的根节点
+    processNode(treeData);
   });
   
-  // 保存第一个图实例用于销毁
-  graph = graphs[0];
+  // 创建一个图实例来显示所有树
+  const graph = new Graph({
+    container: containerRef.value,
+    width: containerWidth,
+    height: containerHeight,
+    data: {
+      nodes: allNodes,
+      edges: allEdges
+    },
+    node: {
+      style: {
+        labelText: (d) => d.id,
+        labelPlacement: 'center',
+        labelBackground: true,
+        ports: [{ placement: 'right' }, { placement: 'left' }]
+      },
+      state: {
+        collapsed: {
+          collapsed: true
+        }
+      }
+    },
+    edge: {
+      type: 'cubic-horizontal'
+    },
+    layout: {
+      type: 'preset',
+      direction: 'LR',
+      indent: 100,
+      radial: false
+    },
+    behaviors: ['drag-canvas', 'zoom-canvas', 'drag-element', 'collapse-expand']
+  });
+  
+  graph.render();
+  graphs.push(graph);
+  
+  // 监听节点折叠/展开事件
+  graph.on('node:collapsed', (evt) => {
+    updateInterGraphEdges();
+  });
+  
+  // 创建跨树连接线
+  updateInterGraphEdges();
+};
+
+// 更新跨树连接线
+const updateInterGraphEdges = () => {
+  if (graphs.length === 0) return;
+  
+  const graph = graphs[0]; // 获取唯一的图实例
+  
+  // 清除之前的跨图连接线
+  interGraphEdges.forEach(edgeId => {
+    try {
+      if (graph.getEdgeData(edgeId)) {
+        graph.removeEdgeData([edgeId]);
+      }
+    } catch (e) {
+      // 边不存在时会抛出异常，忽略即可
+    }
+  });
+  
+  interGraphEdges = [];
+  
+  // 创建新的跨图连接线
+  interTreeConnections.forEach(connection => {
+    const sourceNode = findNodeInGraphs(connection.source);
+    const targetNode = findNodeInGraphs(connection.target);
+    
+    // 只有当源节点和目标节点都存在且未折叠时才创建连接线
+    if (sourceNode && targetNode && !isNodeCollapsed(sourceNode) && !isNodeCollapsed(targetNode)) {
+      const edgeId = `inter-${connection.source}-${connection.target}`;
+      const edgeData = {
+        id: edgeId,
+        source: connection.source,
+        target: connection.target,
+        style: {
+          stroke: '#1890ff',
+          lineWidth: 2,
+          endArrow: true
+        }
+      };
+      
+      // 将连接线添加到图实例中
+      graph.addEdgeData([edgeData]);
+      interGraphEdges.push(edgeId);
+    }
+  });
+  
+  // 重新绘制图
+  graph.draw();
+};
+
+// 在所有图中查找节点
+const findNodeInGraphs = (nodeId) => {
+  for (const graph of graphs) {
+    try {
+      const nodeData = graph.getNodeData(nodeId);
+      if (nodeData) {
+        return nodeData;
+      }
+    } catch (e) {
+      // 节点不存在时会抛出异常，我们忽略这个异常
+    }
+  }
+  return null;
+};
+
+// 检查节点是否折叠
+const isNodeCollapsed = (nodeData) => {
+  // 检查节点是否有折叠状态
+  return nodeData.states && nodeData.states.includes('collapsed');
 };
 
 onMounted(() => {
@@ -115,9 +246,11 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  if (graph) {
-    graph.destroy();
-  }
+  graphs.forEach(graph => {
+    if (graph) {
+      graph.destroy();
+    }
+  });
 });
 </script>
 

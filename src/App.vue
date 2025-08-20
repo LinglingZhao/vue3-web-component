@@ -1,7 +1,7 @@
 <script setup>
 // 导入自定义元素
 import './components/HelloWorld/index.js'
-import MultiTreeDemo from './components/MultiTree/Demo.vue'
+import MultiTreeDemo from './components/MultiTree/demo.vue'
 </script>
 
 <template>
