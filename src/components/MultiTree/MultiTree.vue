@@ -4,7 +4,10 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
-import { Graph, treeToGraphData } from '@antv/g6';
+import { Graph, treeToGraphData, ExtensionCategory, register } from '@antv/g6';
+import { AntLine } from './antLine.js'
+
+register(ExtensionCategory.EDGE, 'ant-line', AntLine);
 
 const containerRef = ref(null);
 let graphs = [];
@@ -128,7 +131,9 @@ const initGraph = () => {
         const edgeData = {
           id: `edge-${parentId}-${node.id}`,
           source: parentId,
-          target: node.id
+          target: node.id,
+          // 添加属性区分树内边
+          type: 'innerTree'
         };
         allEdges.push(edgeData);
       }
@@ -157,9 +162,7 @@ const initGraph = () => {
     node: {
       style: {
         labelText: (d) => d.id,
-        labelPlacement: 'center',
-        labelBackground: true,
-        ports: [{ placement: 'right' }, { placement: 'left' }]
+        labelPlacement: 'center-right',
       },
       state: {
         collapsed: {
@@ -168,15 +171,30 @@ const initGraph = () => {
       }
     },
     edge: {
-        type: 'polyline',
-        style: {
-          radius: 0,
-          router: {
-            type: 'orth',
-          },
-        },
+        type: (d) => d.type === 'innerTree' ? 'polyline' : 'ant-line',
+        style: (d) => {
+          if (d.type === 'innerTree') {
+            return {
+              radius: 0,
+              router: {
+                type: 'orth',
+              },
+            };
+          } else {
+            return {
+              stroke: '#1890ff',
+              lineWidth: 2,
+              endArrow: false,
+              lineDash: [10, 10],
+              // sourcePort: 'bottom',
+              // targetPort: 'left',
+            };
+          }
+        }
     },
-    behaviors: ['drag-canvas', 'zoom-canvas', 'drag-element', 'collapse-expand']
+    behaviors: ['drag-canvas', 'zoom-canvas', 
+    // 'drag-element',
+     'collapse-expand']
   });
   
   graph.render();
@@ -184,6 +202,7 @@ const initGraph = () => {
   
   // 监听节点折叠/展开事件
   graph.on('node:collapsed', (evt) => {
+    debugger
     updateInterGraphEdges();
   });
   
@@ -222,10 +241,17 @@ const updateInterGraphEdges = () => {
         id: edgeId,
         source: connection.source,
         target: connection.target,
+        // 添加属性区分树之间连线
+        type: 'interTree',
         style: {
           stroke: '#1890ff',
           lineWidth: 2,
-          endArrow: true
+          endArrow: true,
+          // 添加蚂蚁线动画效果
+          lineDash: [5, 5],
+          animate: true,
+          animateType: 'lineDash',
+          animateInterval: 100
         }
       };
       
